@@ -2,12 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, of } from 'rxjs';
 import { Alquiler } from '../interfaces/alquiler';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AlquileresService {
-  private baseUrl = 'http://localhost:8000/api/alquileres';
+  private baseUrl = environment.apiUrl + '/alquileres';
 
   constructor(private http: HttpClient) {}
 

@@ -2,12 +2,13 @@ import { Injectable } from '@angular/core';
 import { Mantenimiento } from '../interfaces/mantenimiento';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MantService {
-  private baseUrl = 'http://localhost:8000/api/mantenimientos';
+  private baseUrl = environment.apiUrl + '/mantenimientos';
 
   constructor(private http: HttpClient) {}
   
