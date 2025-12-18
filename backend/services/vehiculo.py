@@ -1,0 +1,115 @@
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from backend.models.vehiculo import Vehiculo
+from backend.schemas.vehiculo import VehiculoCreate
+from backend.models.mantenimiento import Mantenimiento
+from datetime import datetime, timezone
+
+
+# ---------------------------------------------------------
+# Crear vehículo con validación de patente única
+# ---------------------------------------------------------
+def crear_vehiculo(db: Session, datos: VehiculoCreate):
+    if datos.patente:
+        patente_existente = db.query(Vehiculo).filter(Vehiculo.patente == datos.patente).first()
+        if patente_existente:
+            raise HTTPException(status_code=400, detail=f"Ya existe un vehículo con patente {datos.patente}")
+
+    nuevo_vehiculo = Vehiculo(**datos.model_dump(exclude={"necesita_mantenimiento"}))
+
+    db.add(nuevo_vehiculo)
+    db.commit()
+    db.refresh(nuevo_vehiculo)
+
+    # 2. Crear mantenimiento de confirmación
+    mantenimiento_inicial = Mantenimiento(
+        id_vehiculo=nuevo_vehiculo.id,
+        id_empleado=1,  # el usuario que lo da de alta
+        fecha=datetime.now(timezone.utc),
+        km_actual=nuevo_vehiculo.kilometraje,
+        tipo="confirmacion",
+        costo=0,
+        observaciones="Mantenimiento inicial de confirmación",
+        km_prox_mant=10000,   # valores por defecto
+        meses_prox_mant=12
+    )
+    db.add(mantenimiento_inicial)
+    db.commit()
+    db.refresh(mantenimiento_inicial)
+
+    return nuevo_vehiculo
+
+
+# ---------------------------------------------------------
+# Listar vehículos (solo disponibles)
+# ---------------------------------------------------------
+def listar_vehiculos(db: Session):
+    return db.query(Vehiculo).filter(Vehiculo.disponible == True).all()
+
+
+# ---------------------------------------------------------
+# Listar todos los vehículos (pueden estar no disponibles)
+# ---------------------------------------------------------
+def listar_todos_vehiculos(db: Session):
+    return db.query(Vehiculo).filter(Vehiculo.estado == "Activo").all()
+
+
+# ---------------------------------------------------------
+# Obtener vehículo por ID
+# ---------------------------------------------------------
+def obtener_vehiculo(db: Session, vehiculo_id: int):
+    vehiculo = db.query(Vehiculo).filter(Vehiculo.id == vehiculo_id).first()
+    if not vehiculo:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    return vehiculo
+
+
+# ---------------------------------------------------------
+# Actualizar vehículo con validación de patente única
+# ---------------------------------------------------------
+def actualizar_vehiculo(db: Session, vehiculo_id: int, datos: VehiculoCreate):
+    vehiculo = obtener_vehiculo(db, vehiculo_id)
+
+    # Validar que no exista otro vehículo con la misma patente
+    if datos.patente:
+        patente_existente = (
+            db.query(Vehiculo)
+            .filter(Vehiculo.patente == datos.patente, Vehiculo.id != vehiculo_id)
+            .first()
+        )
+        if patente_existente:
+            raise HTTPException(status_code=400, detail=f"Ya existe otro vehículo con patente {datos.patente}")
+
+    # Actualizar atributos
+    for key, value in datos.model_dump().items():
+        setattr(vehiculo, key, value)
+
+    db.commit()
+    db.refresh(vehiculo)
+    return vehiculo
+
+
+# ---------------------------------------------------------
+# Borrado lógico (vehiculo.disponible = False)
+# ---------------------------------------------------------
+def eliminar_vehiculo(db: Session, vehiculo_id: int):
+    vehiculo = obtener_vehiculo(db, vehiculo_id)
+    vehiculo.estado = "inactivo"
+    db.commit()
+    return {"mensaje": "Vehículo eliminado correctamente"}
+
+
+# ---------------------------------------------------------
+# Filtrar vehículos por patente, marca o modelo
+# ---------------------------------------------------------
+def filtrar_vehiculos(db: Session, patente: str | None = None, marca: str | None = None, modelo: str | None = None):
+    query = db.query(Vehiculo)
+
+    if patente:
+        query = query.filter(Vehiculo.patente.ilike(f"%{patente}%"))
+    if marca:
+        query = query.filter(Vehiculo.marca.ilike(f"%{marca}%"))
+    if modelo:
+        query = query.filter(Vehiculo.modelo.ilike(f"%{modelo}%"))
+
+    return query.all()

@@ -1,0 +1,26 @@
+from pydantic import BaseModel
+from datetime import date, datetime
+
+class ClienteBase(BaseModel):
+    nombre: str
+    dni: str
+    telefono: str | None = None
+    email: str | None = None
+    direccion: str | None = None
+    fecha_registro: datetime | None = None
+
+
+class ClienteCreate(ClienteBase):
+    """Esquema usado para crear un nuevo cliente."""
+    pass
+
+
+class Cliente(ClienteBase):
+    """Esquema de respuesta (incluye campos autogenerados)."""
+    id_cliente: int
+    fecha_registro: datetime
+    estado: bool  # 👈 se agrega para mostrar si está activo o no
+
+    model_config = {
+        "from_attributes": True
+    }
