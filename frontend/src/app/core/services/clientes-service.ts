@@ -1,17 +1,23 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, of } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { Cliente } from '../../core/interfaces/cliente';
+// 1. IMPORTANTE: Importamos el environment
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ClientesService {
-  private baseUrl = 'http://localhost:8000/api/clientes';
+  
+  // 2. CAMBIO CLAVE:
+  // Antes: private baseUrl = 'http://localhost:8000/api/clientes';
+  // Ahora: Concatenamos la base (que cambia sola) + el endpoint específico
+  private baseUrl = environment.apiUrl + '/clientes';
 
   constructor(private http: HttpClient) { }
 
   getAll(): Observable<Cliente[]> {
     const res$ = this.http.get<Cliente[]>(this.baseUrl);
-    res$.subscribe(data => console.log('Datos recibidos:', data));
+    // res$.subscribe(data => console.log('Datos recibidos:', data)); // Opcional: puedes dejarlo o quitarlo
     return res$;
   }
 
